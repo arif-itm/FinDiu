@@ -167,8 +167,8 @@ class ProfileScreen extends StatelessWidget {
           ),
 
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
               child: Column(
                 children: [
                   // Stats Cards
