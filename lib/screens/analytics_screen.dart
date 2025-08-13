@@ -270,13 +270,14 @@ class AnalyticsScreen extends StatelessWidget {
                               const SizedBox(height: 8),
                               Container(
                                 height: 8,
+                                width: double.infinity,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFE5E7EB),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: FractionallySizedBox(
                                   alignment: Alignment.centerLeft,
-                                  widthFactor: (item['percentage'] as int) / 100,
+                                  widthFactor: ((item['percentage'] as int).clamp(0, 100)) / 100.0,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: item['color'] as Color,
@@ -332,7 +333,7 @@ class AnalyticsScreen extends StatelessWidget {
                             final index = entry.key;
                             final item = entry.value;
                             final maxAmount = monthlyTrend.map((d) => d['amount'] as int).reduce((a, b) => a > b ? a : b);
-                            final percentage = ((item['amount'] as int) / maxAmount) * 100;
+                            final percentage = maxAmount > 0 ? ((item['amount'] as int) / maxAmount) * 100 : 0.0;
                             final isIncrease = index > 0 && (item['amount'] as int) > (monthlyTrend[index - 1]['amount'] as int);
 
                             return Column(
@@ -371,13 +372,14 @@ class AnalyticsScreen extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 Container(
                                   height: 12,
+                                  width: double.infinity,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE5E7EB),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: FractionallySizedBox(
                                     alignment: Alignment.centerLeft,
-                                    widthFactor: percentage / 100,
+                                    widthFactor: (percentage.clamp(0.0, 100.0)) / 100.0,
                                     child: Container(
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(

@@ -290,7 +290,9 @@ class _SavingsScreenState extends State<SavingsScreen> {
                         const SizedBox(height: 24),
                         // Savings Goals
                         ...savingsGoals.map((goal) {
-                          final progress = (goal.currentAmount / goal.targetAmount) * 100;
+                          final progress = goal.targetAmount > 0 
+                            ? (goal.currentAmount / goal.targetAmount) * 100 
+                            : 0.0;
                           final daysLeft = _getDaysLeft(goal.deadline);
 
                           return Container(
@@ -379,13 +381,14 @@ class _SavingsScreenState extends State<SavingsScreen> {
                                 const SizedBox(height: 8),
                                 Container(
                                   height: 12,
+                                  width: double.infinity,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE5E7EB),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: FractionallySizedBox(
                                     alignment: Alignment.centerLeft,
-                                    widthFactor: progress / 100,
+                                    widthFactor: (progress.clamp(0.0, 100.0)) / 100.0,
                                     child: Container(
                                       decoration: BoxDecoration(
                                         color: goal.color,
