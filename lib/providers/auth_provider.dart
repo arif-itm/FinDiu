@@ -38,12 +38,24 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Register with email and password
-  Future<bool> registerWithEmailPassword(String email, String password, String fullName) async {
+  Future<bool> registerWithEmailPassword(
+    String email, 
+    String password, 
+    String fullName, {
+    String? studentId,
+    String? university,
+  }) async {
     _setLoading(true);
     _clearError();
 
     try {
-      UserCredential? result = await _authService.registerWithEmailPassword(email, password, fullName);
+      UserCredential? result = await _authService.registerWithEmailPassword(
+        email, 
+        password, 
+        fullName,
+        studentId: studentId,
+        university: university,
+      );
       _setLoading(false);
       return result != null;
     } catch (e) {

@@ -31,8 +31,10 @@ class AuthService {
   Future<UserCredential?> registerWithEmailPassword(
     String email, 
     String password, 
-    String fullName,
-  ) async {
+    String fullName, {
+    String? studentId,
+    String? university,
+  }) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -43,7 +45,7 @@ class AuthService {
       await result.user?.updateDisplayName(fullName);
 
       // Create user document in Firestore
-      await _createUserDocument(result.user!, fullName);
+      await _createUserDocument(result.user!, fullName, studentId: studentId, university: university);
 
       return result;
     } on FirebaseAuthException catch (e) {
@@ -112,15 +114,15 @@ class AuthService {
   }
 
   // Create user document in Firestore
-  Future<void> _createUserDocument(User user, String fullName) async {
+  Future<void> _createUserDocument(User user, String fullName, {String? studentId, String? university}) async {
     final userDoc = _firestore.collection('users').doc(user.uid);
     
     final userData = AppUser.User(
       id: user.uid,
       name: fullName,
       email: user.email ?? '',
-      studentId: '', // To be filled by user later
-      university: '', // To be filled by user later
+      studentId: studentId ?? '', // Use provided value or empty string
+      university: university ?? '', // Use provided value or empty string
       avatar: user.photoURL,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),

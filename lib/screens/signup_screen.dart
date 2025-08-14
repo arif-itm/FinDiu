@@ -72,7 +72,13 @@ class _SignupScreenState extends State<SignupScreen> {
     }
     
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.registerWithEmailPassword(email, password, name);
+    final success = await authProvider.registerWithEmailPassword(
+      email, 
+      password, 
+      name,
+      studentId: _studentIdController.text.trim(),
+      university: _universityController.text.trim(),
+    );
     
     if (success) {
       // Explicitly navigate to dashboard on successful registration
@@ -181,11 +187,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   // Form Fields
                   Column(
                     children: [
-                      // Full Name Field
+                      // Name Field
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(
-                          hintText: 'Full Name',
+                          hintText: 'Name',
                           prefixIcon: Icon(LucideIcons.user),
                         ),
                         textCapitalization: TextCapitalization.words,
