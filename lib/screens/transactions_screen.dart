@@ -298,7 +298,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           // Content
           Expanded(
             child: Container(
-              transform: Matrix4.translationValues(0, -24, 0),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
                 child: Column(
