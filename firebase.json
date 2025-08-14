@@ -1,0 +1,31 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "findiu-2025",
+          "appId": "1:802298935416:android:df2866b1c241dcde29958d",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "findiu-2025",
+          "configurations": {
+            "android": "1:802298935416:android:df2866b1c241dcde29958d",
+            "ios": "1:802298935416:ios:bf34c537d9d28e0d29958d",
+            "macos": "1:802298935416:ios:bf34c537d9d28e0d29958d",
+            "web": "1:802298935416:web:ffd3138baf0a17f429958d",
+            "windows": "1:802298935416:web:9c99ae14eb97f87629958d"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-southeast1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

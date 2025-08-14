@@ -6,6 +6,17 @@ class AppConfig {
   static const String appDescription = 'Your AI-Powered Financial Companion for Secure & Simple Money Management';
   static const String appTagline = 'Simple • Smart • Secure';
   
+  // Firebase Configuration
+  static const String firebaseProjectId = 'findiu-2025';
+  
+  // Gemini AI Configuration
+  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY';
+  
+  // Development vs Production flags
+  static const bool isDevelopment = true;
+  static const bool useFirestoreEmulator = false;
+  static const bool useAuthEmulator = false;
+  
   // Enhanced AI-Generated Slogans (alternatives)
   static const List<String> alternativeSlogans = [
     'Empowering Students, One Smart Dollar at a Time',

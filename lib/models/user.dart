@@ -5,6 +5,8 @@ class User {
   final String studentId;
   final String university;
   final String? avatar;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   User({
     required this.id,
@@ -13,6 +15,8 @@ class User {
     required this.studentId,
     required this.university,
     this.avatar,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class User {
       studentId: json['studentId'],
       university: json['university'],
       avatar: json['avatar'],
+      createdAt: json['createdAt']?.toDate(),
+      updatedAt: json['updatedAt']?.toDate(),
     );
   }
 
@@ -34,6 +40,11 @@ class User {
       'studentId': studentId,
       'university': university,
       'avatar': avatar,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
     };
   }
+
+  // Alias for Firebase compatibility
+  Map<String, dynamic> toMap() => toJson();
 }
