@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../utils/input_validators.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
@@ -163,7 +164,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           const SizedBox(height: 16),
                           TextField(
                             controller: _amountController,
-                            keyboardType: TextInputType.number,
+                            keyboardType: TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: InputValidators.getAmountFormatters(),
+                            onChanged: (value) {
+                              setState(() {}); // Trigger rebuild for validation
+                            },
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -177,6 +182,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 color: Color(0xFF9CA3AF),
                               ),
                               hintText: '0',
+                              errorText: InputValidators.getAmountErrorMessage(_amountController.text),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 borderSide: const BorderSide(
@@ -379,7 +385,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               child: ElevatedButton(
                 onPressed: (_amountController.text.isNotEmpty &&
                         _descriptionController.text.isNotEmpty &&
-                        _selectedCategory.isNotEmpty)
+                        _selectedCategory.isNotEmpty &&
+                        InputValidators.isValidAmount(_amountController.text))
                     ? _addExpense
                     : null,
                 style: ElevatedButton.styleFrom(

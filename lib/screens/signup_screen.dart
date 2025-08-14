@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../utils/input_validators.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -96,9 +97,14 @@ class _SignupScreenState extends State<SignupScreen> {
                       // Email Field
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(
-                          hintText: 'University email',
+                        inputFormatters: InputValidators.getEmailFormatters(),
+                        onChanged: (value) {
+                          setState(() {}); // Trigger rebuild for validation
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'University email (e.g., student@diu.edu.bd)',
                           prefixIcon: Icon(LucideIcons.mail),
+                          errorText: InputValidators.getDiuEmailErrorMessage(_emailController.text),
                         ),
                         keyboardType: TextInputType.emailAddress,
                       ),
@@ -107,6 +113,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       // Student ID Field
                       TextFormField(
                         controller: _studentIdController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: InputValidators.getStudentIdFormatters(),
                         decoration: const InputDecoration(
                           hintText: 'Student ID',
                           prefixIcon: Icon(LucideIcons.graduationCap),
@@ -171,7 +179,16 @@ class _SignupScreenState extends State<SignupScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _handleSignup,
+                          onPressed: (_nameController.text.isNotEmpty &&
+                                   _emailController.text.isNotEmpty &&
+                                   _studentIdController.text.isNotEmpty &&
+                                   _universityController.text.isNotEmpty &&
+                                   _passwordController.text.isNotEmpty &&
+                                   _confirmPasswordController.text.isNotEmpty &&
+                                   InputValidators.isValidDiuEmail(_emailController.text) &&
+                                   _passwordController.text == _confirmPasswordController.text)
+                              ? _handleSignup
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF8B5CF6), // Secondary-500
                             foregroundColor: Colors.white,

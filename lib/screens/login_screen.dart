@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../utils/input_validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -148,9 +149,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Email Field
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    hintText: 'University email',
+                  inputFormatters: InputValidators.getEmailFormatters(),
+                  onChanged: (value) {
+                    setState(() {}); // Trigger rebuild for validation
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'University email (e.g., student@diu.edu.bd)',
                     prefixIcon: Icon(LucideIcons.mail),
+                    errorText: InputValidators.getDiuEmailErrorMessage(_emailController.text),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -181,7 +187,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _handleLogin,
+                    onPressed: (_emailController.text.isNotEmpty &&
+                             _passwordController.text.isNotEmpty &&
+                             InputValidators.isValidDiuEmail(_emailController.text))
+                        ? _handleLogin
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6366F1),
                       foregroundColor: Colors.white,

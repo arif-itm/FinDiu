@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/bottom_navigation.dart';
 import '../models/savings_goal.dart';
+import '../utils/input_validators.dart';
 
 class SavingsScreen extends StatefulWidget {
   const SavingsScreen({super.key});
@@ -549,11 +550,16 @@ class _SavingsScreenState extends State<SavingsScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _targetAmountController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: InputValidators.getAmountFormatters(),
+                        onChanged: (value) {
+                          setState(() {}); // Trigger rebuild for validation
+                        },
                         decoration: InputDecoration(
                           labelText: 'Target Amount',
                           hintText: '0',
                           prefixText: '৳',
+                          errorText: InputValidators.getAmountErrorMessage(_targetAmountController.text),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -592,7 +598,12 @@ class _SavingsScreenState extends State<SavingsScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _handleCreateGoal,
+                              onPressed: (_titleController.text.isNotEmpty &&
+                                       _targetAmountController.text.isNotEmpty &&
+                                       _selectedCategory.isNotEmpty &&
+                                       InputValidators.isValidAmount(_targetAmountController.text))
+                                  ? _handleCreateGoal
+                                  : null,
                               child: const Text('Create Goal'),
                             ),
                           ),
@@ -649,11 +660,16 @@ class _SavingsScreenState extends State<SavingsScreen> {
                       const SizedBox(height: 24),
                       TextField(
                         controller: _addAmountController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: InputValidators.getAmountFormatters(),
+                        onChanged: (value) {
+                          setState(() {}); // Trigger rebuild for validation
+                        },
                         decoration: InputDecoration(
                           labelText: 'Amount',
                           hintText: '0',
                           prefixText: '৳',
+                          errorText: InputValidators.getAmountErrorMessage(_addAmountController.text),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -671,7 +687,10 @@ class _SavingsScreenState extends State<SavingsScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _handleAddMoney,
+                              onPressed: (_addAmountController.text.isNotEmpty &&
+                                       InputValidators.isValidAmount(_addAmountController.text))
+                                  ? _handleAddMoney
+                                  : null,
                               child: const Text('Add Money'),
                             ),
                           ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import '../utils/input_validators.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -371,7 +373,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _handleSave,
+                        onPressed: (_nameController.text.isNotEmpty &&
+                                 _emailController.text.isNotEmpty &&
+                                 _phoneController.text.isNotEmpty &&
+                                 InputValidators.isValidDiuEmail(_emailController.text))
+                            ? _handleSave
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).primaryColor,
                           foregroundColor: Colors.white,
@@ -406,9 +413,26 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     required String hint,
     TextInputType? keyboardType,
   }) {
+    // Determine input formatters based on field type
+    List<TextInputFormatter>? inputFormatters;
+    String? errorText;
+    
+    if (keyboardType == TextInputType.phone) {
+      inputFormatters = InputValidators.getPhoneFormatters();
+    } else if (hint.toLowerCase().contains('student id')) {
+      inputFormatters = InputValidators.getStudentIdFormatters();
+    } else if (keyboardType == TextInputType.emailAddress) {
+      inputFormatters = InputValidators.getEmailFormatters();
+      errorText = InputValidators.getDiuEmailErrorMessage(controller.text);
+    }
+
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      onChanged: keyboardType == TextInputType.emailAddress 
+          ? (value) => setState(() {}) // Trigger rebuild for email validation
+          : null,
       decoration: InputDecoration(
         prefixIcon: icon != null
             ? Icon(
@@ -416,7 +440,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 color: const Color(0xFF9CA3AF),
               )
             : null,
-        hintText: hint,
+        hintText: keyboardType == TextInputType.emailAddress 
+            ? 'Email Address (e.g., student@diu.edu.bd)'
+            : hint,
+        errorText: errorText,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(
