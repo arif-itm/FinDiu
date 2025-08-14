@@ -221,23 +221,71 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     // Search Bar
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Search transactions...',
-                          hintStyle: TextStyle(color: Colors.white60),
-                          prefixIcon: Icon(
-                            LucideIcons.search,
-                            color: Colors.white60,
-                            size: 20,
+                        style: const TextStyle(
+                          color: Color(0xFF111827),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search transactions, categories...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
                           ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          prefixIcon: Container(
+                            padding: const EdgeInsets.all(12),
+                            child: Icon(
+                              LucideIcons.search,
+                              color: Colors.grey[400],
+                              size: 22,
+                            ),
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? GestureDetector(
+                                  onTap: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Icon(
+                                      LucideIcons.x,
+                                      color: Colors.grey[400],
+                                      size: 20,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF6366F1),
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20, 
+                            vertical: 16,
+                          ),
                         ),
                         onChanged: (value) => setState(() {}),
                       ),
