@@ -28,6 +28,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     
+    // Clear any previous errors
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Validation
     if (email.isEmpty || password.isEmpty) {
       _showErrorSnackBar('Please fill in all fields');
       return;
@@ -38,13 +42,22 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (password.length < 6) {
+      _showErrorSnackBar('Password must be at least 6 characters long');
+      return;
+    }
+    
     final success = await authProvider.signInWithEmailPassword(email, password);
     
     if (success) {
-      context.go('/dashboard');
+      // Explicitly navigate to dashboard on successful authentication
+      if (mounted) {
+        context.go('/dashboard');
+      }
     } else {
-      _showErrorSnackBar(authProvider.errorMessage ?? 'Login failed');
+      // Error message will be displayed by the Consumer widget or here as fallback
+      final errorMessage = authProvider.errorMessage ?? 'Login failed. Please try again.';
+      _showErrorSnackBar(errorMessage);
     }
   }
 
@@ -59,6 +72,84 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
   
+  void _showForgotPasswordDialog() {
+    final forgotEmailController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: forgotEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                return ElevatedButton(
+                  onPressed: authProvider.isLoading
+                      ? null
+                      : () async {
+                          final email = forgotEmailController.text.trim();
+                          if (email.isEmpty) {
+                            _showErrorSnackBar('Please enter your email address');
+                            return;
+                          }
+                          
+                          final success = await authProvider.resetPassword(email);
+                          if (success) {
+                            Navigator.of(context).pop();
+                            _showSuccessSnackBar('Password reset email sent! Check your inbox.');
+                          } else {
+                            _showErrorSnackBar(authProvider.errorMessage ?? 'Failed to send reset email');
+                          }
+                        },
+                  child: authProvider.isLoading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Send Reset Email'),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -111,7 +202,41 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
+
+                // Error Display
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    if (authProvider.errorMessage != null) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          border: Border.all(color: Colors.red.shade200),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                authProvider.errorMessage!,
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
 
                 // Google Login Button
                 SizedBox(
@@ -280,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Forgot Password
                 TextButton(
-                  onPressed: () {},
+                  onPressed: _showForgotPasswordDialog,
                   child: const Text(
                     'Forgot Password?',
                     style: TextStyle(

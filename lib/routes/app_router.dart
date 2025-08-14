@@ -17,6 +17,7 @@ import '../providers/auth_provider.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/splash',
+  refreshListenable: null, // Will be set up in main.dart
   redirect: (context, state) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final isAuthenticated = authProvider.isAuthenticated;

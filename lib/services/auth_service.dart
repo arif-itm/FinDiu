@@ -58,7 +58,7 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
-        return null; // User cancelled the sign-in
+        throw Exception('Google sign-in was cancelled by user');
       }
 
       // Obtain the auth details from the request
@@ -82,7 +82,13 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw Exception('An error occurred during Google sign-in: $e');
+      if (e.toString().contains('cancelled by user')) {
+        throw Exception('Google sign-in was cancelled');
+      } else if (e.toString().contains('network_error')) {
+        throw Exception('Network error during Google sign-in. Please check your internet connection.');
+      } else {
+        throw Exception('Google sign-in failed. Please try again.');
+      }
     }
   }
 
@@ -126,24 +132,50 @@ class AuthService {
   // Handle Firebase Auth exceptions
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
+      // Sign in errors
       case 'user-not-found':
-        return 'No user found for that email.';
+        return 'No account found with this email address. Please check your email or sign up for a new account.';
       case 'wrong-password':
-        return 'Wrong password provided for that user.';
-      case 'email-already-in-use':
-        return 'The account already exists for that email.';
-      case 'weak-password':
-        return 'The password provided is too weak.';
+        return 'Incorrect password. Please try again or reset your password.';
       case 'invalid-email':
-        return 'The email address is not valid.';
+        return 'Please enter a valid email address.';
       case 'user-disabled':
-        return 'This user account has been disabled.';
+        return 'This account has been disabled. Please contact support for assistance.';
+      case 'invalid-credential':
+        return 'Invalid email or password. Please check your credentials and try again.';
+      
+      // Sign up errors
+      case 'email-already-in-use':
+        return 'An account with this email address already exists. Please sign in instead.';
+      case 'weak-password':
+        return 'Password is too weak. Please use at least 6 characters with a mix of letters and numbers.';
+      
+      // Network and service errors
       case 'too-many-requests':
-        return 'Too many requests. Try again later.';
+        return 'Too many failed attempts. Please wait a few minutes before trying again.';
       case 'operation-not-allowed':
-        return 'Signing in with Email and Password is not enabled.';
+        return 'This sign-in method is not enabled. Please contact support.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection and try again.';
+      
+      // Google Sign-in specific errors
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with this email using a different sign-in method.';
+      case 'popup-closed-by-user':
+        return 'Sign-in was cancelled. Please try again.';
+      case 'cancelled-popup-request':
+        return 'Sign-in was cancelled. Please try again.';
+      
+      // General errors
+      case 'requires-recent-login':
+        return 'This operation requires recent authentication. Please sign in again.';
+      case 'credential-already-in-use':
+        return 'This credential is already associated with a different account.';
+      
       default:
-        return 'An error occurred: ${e.message}';
+        // Log the actual error code for debugging
+        print('Unhandled Firebase Auth error: ${e.code} - ${e.message}');
+        return 'Authentication failed. Please try again or contact support if the problem persists.';
     }
   }
 }

@@ -47,7 +47,12 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return result != null;
     } catch (e) {
-      _setError(e.toString());
+      String errorMessage = e.toString();
+      // Clean up error message (remove "Exception: " prefix if present)
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      _setError(errorMessage);
       _setLoading(false);
       return false;
     }
@@ -63,21 +68,15 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return result != null;
     } catch (e) {
-      _setError(e.toString());
+      String errorMessage = e.toString();
+      // Clean up error message (remove "Exception: " prefix if present)
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      _setError(errorMessage);
       _setLoading(false);
       return false;
     }
-  }
-
-  // Sign out
-  Future<void> signOut() async {
-    _setLoading(true);
-    try {
-      await _authService.signOut();
-    } catch (e) {
-      _setError(e.toString());
-    }
-    _setLoading(false);
   }
 
   // Reset password
@@ -90,10 +89,31 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      String errorMessage = e.toString();
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      _setError(errorMessage);
       _setLoading(false);
       return false;
     }
+  }
+
+  // Sign out
+  Future<void> signOut() async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      await _authService.signOut();
+    } catch (e) {
+      String errorMessage = e.toString();
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      _setError(errorMessage);
+    }
+    _setLoading(false);
   }
 
   void _setLoading(bool loading) {

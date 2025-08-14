@@ -39,8 +39,14 @@ class _SignupScreenState extends State<SignupScreen> {
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
     
+    // Validation
     if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       _showErrorSnackBar('Please fill in all fields');
+      return;
+    }
+    
+    if (name.length < 2) {
+      _showErrorSnackBar('Name must be at least 2 characters long');
       return;
     }
     
@@ -55,7 +61,13 @@ class _SignupScreenState extends State<SignupScreen> {
     }
     
     if (password.length < 6) {
-      _showErrorSnackBar('Password must be at least 6 characters');
+      _showErrorSnackBar('Password must be at least 6 characters long');
+      return;
+    }
+    
+    // Check password strength
+    if (!_isPasswordStrong(password)) {
+      _showErrorSnackBar('Password should contain at least one letter and one number');
       return;
     }
     
@@ -63,10 +75,19 @@ class _SignupScreenState extends State<SignupScreen> {
     final success = await authProvider.registerWithEmailPassword(email, password, name);
     
     if (success) {
-      context.go('/dashboard');
+      // Explicitly navigate to dashboard on successful registration
+      if (mounted) {
+        context.go('/dashboard');
+      }
     } else {
-      _showErrorSnackBar(authProvider.errorMessage ?? 'Registration failed');
+      final errorMessage = authProvider.errorMessage ?? 'Registration failed. Please try again.';
+      _showErrorSnackBar(errorMessage);
     }
+  }
+  
+  bool _isPasswordStrong(String password) {
+    // Check if password contains at least one letter and one number
+    return password.contains(RegExp(r'[a-zA-Z]')) && password.contains(RegExp(r'[0-9]'));
   }
   
   void _showErrorSnackBar(String message) {
@@ -121,7 +142,41 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
+
+                  // Error Display
+                  Consumer<AuthProvider>(
+                    builder: (context, authProvider, child) {
+                      if (authProvider.errorMessage != null) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            border: Border.all(color: Colors.red.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  authProvider.errorMessage!,
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
 
                   // Form Fields
                   Column(
