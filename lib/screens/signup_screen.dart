@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../utils/input_validators.dart';
+import '../providers/auth_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -31,9 +33,50 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _handleSignup() {
-    // Simulate signup
-    context.go('/dashboard');
+  void _handleSignup() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+    
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showErrorSnackBar('Please fill in all fields');
+      return;
+    }
+    
+    if (!email.contains('@') || !email.contains('.')) {
+      _showErrorSnackBar('Please enter a valid email address');
+      return;
+    }
+    
+    if (password != confirmPassword) {
+      _showErrorSnackBar('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      _showErrorSnackBar('Password must be at least 6 characters');
+      return;
+    }
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.registerWithEmailPassword(email, password, name);
+    
+    if (success) {
+      context.go('/dashboard');
+    } else {
+      _showErrorSnackBar(authProvider.errorMessage ?? 'Registration failed');
+    }
+  }
+  
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -178,40 +221,44 @@ class _SignupScreenState extends State<SignupScreen> {
                       // Create Account Button
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: (_nameController.text.isNotEmpty &&
-                                   _emailController.text.isNotEmpty &&
-                                   _studentIdController.text.isNotEmpty &&
-                                   _universityController.text.isNotEmpty &&
-                                   _passwordController.text.isNotEmpty &&
-                                   _confirmPasswordController.text.isNotEmpty &&
-                                   InputValidators.isValidDiuEmail(_emailController.text) &&
-                                   _passwordController.text == _confirmPasswordController.text)
-                              ? _handleSignup
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B5CF6), // Secondary-500
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Create Account',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
+                        child: Consumer<AuthProvider>(
+                          builder: (context, authProvider, child) {
+                            return ElevatedButton(
+                              onPressed: authProvider.isLoading ? null : _handleSignup,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF8B5CF6), // Secondary-500
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              SizedBox(width: 8),
-                              Icon(LucideIcons.arrowRight, size: 20),
-                            ],
-                          ),
+                              child: authProvider.isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Create Account',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Icon(LucideIcons.arrowRight, size: 20),
+                                      ],
+                                    ),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 32),

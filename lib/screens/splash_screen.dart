@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -60,10 +62,15 @@ class _SplashScreenState extends State<SplashScreen>
       _slideController.forward();
     });
 
-    // Navigate to login after 3 seconds
+        // Navigate after animations
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        context.go('/login');
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        if (authProvider.isAuthenticated) {
+          context.go('/dashboard');
+        } else {
+          context.go('/login');
+        }
       }
     });
   }

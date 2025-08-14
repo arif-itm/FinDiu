@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'routes/app_router.dart';
 import 'firebase_options.dart';
+import 'providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,7 +13,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
-  runApp(const FindiuApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AuthProvider(),
+      child: const FindiuApp(),
+    ),
+  );
 }
 
 class FindiuApp extends StatelessWidget {

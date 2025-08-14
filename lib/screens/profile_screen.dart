@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  static void _handleLogout(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.signOut();
+    // The router redirect will handle navigation to login
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
         'icon': Icons.logout,
         'label': 'Sign Out',
         'color': Colors.red[600],
-        'action': () => context.go('/login'),
+        'action': () => _handleLogout(context),
       },
     ];
 

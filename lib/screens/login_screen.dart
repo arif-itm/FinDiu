@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../utils/input_validators.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,14 +24,49 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    // Simulate login
-    context.go('/dashboard');
+  void _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorSnackBar('Please fill in all fields');
+      return;
+    }
+    
+    if (!email.contains('@') || !email.contains('.')) {
+      _showErrorSnackBar('Please enter a valid email address');
+      return;
+    }
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.signInWithEmailPassword(email, password);
+    
+    if (success) {
+      context.go('/dashboard');
+    } else {
+      _showErrorSnackBar(authProvider.errorMessage ?? 'Login failed');
+    }
   }
 
-  void _handleGoogleLogin() {
-    // Simulate Google login
-    context.go('/dashboard');
+  void _handleGoogleLogin() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.signInWithGoogle();
+    
+    if (success) {
+      context.go('/dashboard');
+    } else {
+      _showErrorSnackBar(authProvider.errorMessage ?? 'Google sign-in failed');
+    }
+  }
+  
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -79,50 +116,63 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Google Login Button
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _handleGoogleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF374151),
-                      elevation: 0,
-                      side: const BorderSide(color: Color(0xFFE5E7EB), width: 2),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/google_logo.png',
-                          width: 20,
-                          height: 20,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 20,
-                              height: 20,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF4285F4),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.g_mobiledata,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
+                  child: Consumer<AuthProvider>(
+                    builder: (context, authProvider, child) {
+                      return ElevatedButton(
+                        onPressed: authProvider.isLoading ? null : _handleGoogleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF374151),
+                          elevation: 0,
+                          side: const BorderSide(color: Color(0xFFE5E7EB), width: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                      ],
-                    ),
+                        child: authProvider.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF374151)),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/google_logo.png',
+                                    width: 20,
+                                    height: 20,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF4285F4),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.g_mobiledata,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -186,35 +236,44 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Sign In Button
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (_emailController.text.isNotEmpty &&
-                             _passwordController.text.isNotEmpty &&
-                             InputValidators.isValidDiuEmail(_emailController.text))
-                        ? _handleLogin
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                  child: Consumer<AuthProvider>(
+                    builder: (context, authProvider, child) {
+                      return ElevatedButton(
+                        onPressed: authProvider.isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(LucideIcons.arrowRight, size: 20),
-                      ],
-                    ),
+                        child: authProvider.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Sign In',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(LucideIcons.arrowRight, size: 20),
+                                ],
+                              ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),

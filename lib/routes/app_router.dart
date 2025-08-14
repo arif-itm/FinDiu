@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/signup_screen.dart';
@@ -12,9 +13,34 @@ import '../screens/profile_screen.dart';
 import '../screens/profile_edit_screen.dart';
 import '../screens/about_screen.dart';
 import '../screens/transactions_screen.dart';
+import '../providers/auth_provider.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/splash',
+  redirect: (context, state) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isAuthenticated = authProvider.isAuthenticated;
+    final isLoading = authProvider.isLoading;
+    
+    // If still loading, stay on current route
+    if (isLoading) return null;
+    
+    // Public routes that don't require authentication
+    final publicRoutes = ['/splash', '/login', '/signup'];
+    final isPublicRoute = publicRoutes.contains(state.matchedLocation);
+    
+    // If not authenticated and trying to access protected route
+    if (!isAuthenticated && !isPublicRoute) {
+      return '/login';
+    }
+    
+    // If authenticated and on auth routes, redirect to dashboard
+    if (isAuthenticated && (state.matchedLocation == '/login' || state.matchedLocation == '/signup')) {
+      return '/dashboard';
+    }
+    
+    return null; // No redirect needed
+  },
   routes: [
     GoRoute(
       path: '/splash',
