@@ -50,8 +50,8 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
     
-    if (!email.contains('@') || !email.contains('.')) {
-      _showErrorSnackBar('Please enter a valid email address');
+    if (!InputValidators.isValidDiuEmail(email)) {
+      _showErrorSnackBar('Please use your DIU email address (@diu.edu.bd)');
       return;
     }
     

@@ -30,7 +30,7 @@ class AuthProvider extends ChangeNotifier {
       UserCredential? result = await _authService.signInWithEmailPassword(email, password);
       _setLoading(false);
       return result != null;
-    } catch (e) {
+  } catch (e) {
       _setError(e.toString());
       _setLoading(false);
       return false;
@@ -61,7 +61,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       String errorMessage = e.toString();
       // Clean up error message (remove "Exception: " prefix if present)
-      if (errorMessage.startsWith('Exception: ')) {
+  if (errorMessage.startsWith('Exception: ')) {
         errorMessage = errorMessage.substring(11);
       }
       _setError(errorMessage);
@@ -82,7 +82,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       String errorMessage = e.toString();
       // Clean up error message (remove "Exception: " prefix if present)
-      if (errorMessage.startsWith('Exception: ')) {
+  if (errorMessage.startsWith('Exception: ')) {
         errorMessage = errorMessage.substring(11);
       }
       _setError(errorMessage);
@@ -102,7 +102,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       String errorMessage = e.toString();
-      if (errorMessage.startsWith('Exception: ')) {
+  if (errorMessage.startsWith('Exception: ')) {
         errorMessage = errorMessage.substring(11);
       }
       _setError(errorMessage);
@@ -118,7 +118,7 @@ class AuthProvider extends ChangeNotifier {
     
     try {
       await _authService.signOut();
-    } catch (e) {
+  } catch (e) {
       String errorMessage = e.toString();
       if (errorMessage.startsWith('Exception: ')) {
         errorMessage = errorMessage.substring(11);

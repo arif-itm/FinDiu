@@ -37,8 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     
-    if (!email.contains('@') || !email.contains('.')) {
-      _showErrorSnackBar('Please enter a valid email address');
+    if (!InputValidators.isValidDiuEmail(email)) {
+      _showErrorSnackBar('Please use your DIU email address (@diu.edu.bd)');
       return;
     }
     
@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     
-    final success = await authProvider.signInWithEmailPassword(email, password);
+  final success = await authProvider.signInWithEmailPassword(email, password);
     
     if (success) {
       // Explicitly navigate to dashboard on successful authentication
@@ -55,20 +55,21 @@ class _LoginScreenState extends State<LoginScreen> {
         context.go('/dashboard');
       }
     } else {
-      // Error message will be displayed by the Consumer widget or here as fallback
-      final errorMessage = authProvider.errorMessage ?? 'Login failed. Please try again.';
+  // Error message will be displayed by the Consumer widget or here as fallback
+  final errorMessage = authProvider.errorMessage ?? 'Login failed. Please try again.';
       _showErrorSnackBar(errorMessage);
     }
   }
 
   void _handleGoogleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.signInWithGoogle();
+  final success = await authProvider.signInWithGoogle();
     
     if (success) {
       context.go('/dashboard');
     } else {
-      _showErrorSnackBar(authProvider.errorMessage ?? 'Google sign-in failed');
+  final error = authProvider.errorMessage ?? 'Google sign-in failed';
+  _showErrorSnackBar(error);
     }
   }
   
@@ -267,25 +268,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Image.asset(
-                                    'assets/google_logo.png',
+                                  Container(
                                     width: 20,
                                     height: 20,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF4285F4),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.g_mobiledata,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      );
-                                    },
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF4285F4),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text(
+                                      'G',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   const Text(
@@ -299,6 +297,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     },
                   ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Only DIU accounts are allowed (email must end with @diu.edu.bd)',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
 

@@ -1,11 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart' as AppUser;
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // Restrict Google account chooser to DIU domain (UX hint) and enforce in code.
+  // On web, also pass the OAuth clientId as required by google_sign_in_web.
+  late final GoogleSignIn _googleSignIn = GoogleSignIn(
+    hostedDomain: 'diu.edu.bd',
+  scopes: const <String>['email'],
+    clientId: kIsWeb
+        ? '802298935416-jpgj0r49r0q5g5h0jjt188pgb6prm21l.apps.googleusercontent.com'
+        : null,
+  );
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Get current user
@@ -22,7 +31,7 @@ class AuthService {
         password: password,
       );
       return result;
-    } on FirebaseAuthException catch (e) {
+  } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -48,7 +57,7 @@ class AuthService {
       await _createUserDocument(result.user!, fullName, studentId: studentId, university: university);
 
       return result;
-    } on FirebaseAuthException catch (e) {
+  } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -56,11 +65,39 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      // On Web, prefer Firebase Auth popup to avoid People API usage by google_sign_in_web
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        provider.addScope('email');
+        provider.setCustomParameters({'hd': 'diu.edu.bd'});
+
+        final result = await _auth.signInWithPopup(provider);
+
+        final firebaseEmail = (result.user?.email ?? '').toLowerCase();
+        if (!firebaseEmail.endsWith('@diu.edu.bd')) {
+          try { await _auth.signOut(); } catch (_) {}
+          throw Exception('Only @diu.edu.bd email accounts are allowed. Please use your university email.');
+        }
+
+        if (result.additionalUserInfo?.isNewUser == true) {
+          await _createUserDocument(result.user!, result.user!.displayName ?? 'User');
+        }
+        return result;
+      }
+
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
-      if (googleUser == null) {
-        throw Exception('Google sign-in was cancelled by user');
+  if (googleUser == null) {
+  throw Exception('Google sign-in was cancelled by user');
+      }
+
+      // Enforce DIU email domain before proceeding
+      final email = (googleUser.email).toLowerCase();
+      if (!email.endsWith('@diu.edu.bd')) {
+        // Disconnect to make sure account is not kept in the picker
+        try { await _googleSignIn.disconnect(); } catch (_) {}
+        throw Exception('Only @diu.edu.bd email accounts are allowed. Please use your university email.');
       }
 
       // Obtain the auth details from the request
@@ -75,21 +112,29 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       UserCredential result = await _auth.signInWithCredential(credential);
 
+      // Extra safety: verify Firebase user email domain as well
+      final firebaseEmail = (result.user?.email ?? '').toLowerCase();
+      if (!firebaseEmail.endsWith('@diu.edu.bd')) {
+        try { await signOut(); } catch (_) {}
+        throw Exception('Only @diu.edu.bd email accounts are allowed. Please use your university email.');
+      }
+
       // Create user document if it's a new user
       if (result.additionalUserInfo?.isNewUser == true) {
         await _createUserDocument(result.user!, result.user!.displayName ?? 'User');
       }
 
       return result;
-    } on FirebaseAuthException catch (e) {
+  } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
-    } catch (e) {
+  } catch (e) {
       if (e.toString().contains('cancelled by user')) {
         throw Exception('Google sign-in was cancelled');
       } else if (e.toString().contains('network_error')) {
         throw Exception('Network error during Google sign-in. Please check your internet connection.');
       } else {
-        throw Exception('Google sign-in failed. Please try again.');
+  // Surface explicit domain errors or other messages
+  throw Exception(e.toString().replaceFirst('Exception: ', ''));
       }
     }
   }
@@ -99,7 +144,7 @@ class AuthService {
     try {
       await _googleSignIn.signOut();
       await _auth.signOut();
-    } catch (e) {
+  } catch (e) {
       throw Exception('An error occurred during sign out: $e');
     }
   }
@@ -108,7 +153,7 @@ class AuthService {
   Future<void> resetPassword(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
+  } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -175,8 +220,6 @@ class AuthService {
         return 'This credential is already associated with a different account.';
       
       default:
-        // Log the actual error code for debugging
-        print('Unhandled Firebase Auth error: ${e.code} - ${e.message}');
         return 'Authentication failed. Please try again or contact support if the problem persists.';
     }
   }
