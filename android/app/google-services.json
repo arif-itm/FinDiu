@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "802298935416",
+    "firebase_url": "https://findiu-2025-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "findiu-2025",
     "storage_bucket": "findiu-2025.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.findiu.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "802298935416-8lcj87c4pkfj7m38itv0eeke4sk392b2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.findiu.app",
+            "certificate_hash": "0c663e4aceff7d5949512b2dbeb0faa59f434101"
+          }
+        },
+        {
+          "client_id": "802298935416-jpgj0r49r0q5g5h0jjt188pgb6prm21l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAUOgesXcLq1Eve5GunCeLbECQFZg6Kujo"
@@ -20,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "802298935416-jpgj0r49r0q5g5h0jjt188pgb6prm21l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "802298935416-gv7pnmoctfq42251abocd6kgtm012pc8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.findiu"
+              }
+            }
+          ]
         }
       }
     }
