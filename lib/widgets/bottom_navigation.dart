@@ -15,7 +15,7 @@ class BottomNavigation extends StatelessWidget {
     final navItems = [
       {'route': '/dashboard', 'icon': LucideIcons.home, 'label': 'Home'},
       {'route': '/savings', 'icon': LucideIcons.target, 'label': 'Goals'},
-      {'route': '/add-expense', 'icon': LucideIcons.plus, 'label': 'Add', 'isSpecial': true},
+      {'route': '/add-transaction', 'icon': LucideIcons.plus, 'label': 'Add', 'isSpecial': true},
       {'route': '/ai-chat', 'icon': LucideIcons.messageCircle, 'label': 'AI Chat'},
       {'route': '/analytics', 'icon': LucideIcons.barChart3, 'label': 'Analytics'},
     ];
@@ -43,7 +43,7 @@ class BottomNavigation extends StatelessWidget {
               final isSpecial = item['isSpecial'] == true;
               
               if (isSpecial) {
-                // Special prominent button for Add Expense
+                // Special prominent button for Add Transaction
                 return GestureDetector(
                   onTap: () => context.go(item['route'] as String),
                   child: Container(

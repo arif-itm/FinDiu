@@ -4,7 +4,7 @@ import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/signup_screen.dart';
 import '../screens/dashboard_screen.dart';
-import '../screens/add_expense_screen.dart';
+import '../screens/add_transaction_screen.dart';
 import '../screens/savings_screen.dart';
 import '../screens/reminders_screen.dart';
 import '../screens/ai_chat_screen.dart';
@@ -65,9 +65,9 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const DashboardScreen(),
     ),
     GoRoute(
-      path: '/add-expense',
-      name: 'add-expense',
-      builder: (context, state) => AddExpenseScreen(),
+      path: '/add-transaction',
+      name: 'add-transaction',
+      builder: (context, state) => AddTransactionScreen(),
     ),
     GoRoute(
       path: '/savings',

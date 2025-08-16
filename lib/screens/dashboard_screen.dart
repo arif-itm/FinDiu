@@ -325,12 +325,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Expanded(
                               child: _buildQuickAction(
-                                icon: LucideIcons.plus,
+                                icon: LucideIcons.arrowUpDown,
                                 iconColor: Colors.white,
                                 backgroundColor: const Color(0xFF6366F1),
-                                title: 'Add Expense',
-                                subtitle: 'Track spending',
-                                onTap: () => context.go('/add-expense'),
+                                title: 'Add Transaction',
+                                subtitle: 'Track money flow',
+                                onTap: () => context.go('/add-transaction'),
                               ),
                             ),
                             const SizedBox(width: 16),
