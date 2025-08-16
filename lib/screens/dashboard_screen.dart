@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../widgets/bottom_navigation.dart';
 import '../data/mock_data.dart';
+import '../providers/auth_provider.dart';
+import '../services/firestore_service.dart';
+import '../models/user.dart' as app_user;
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,6 +23,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+  final greeting = _timeGreeting();
+  final auth = context.watch<AuthProvider>();
+  final uid = auth.user?.uid;
     return Scaffold(
       body: Column(
         children: [
@@ -40,53 +47,118 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   children: [
                     // Greeting and Profile
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Good morning,',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Arif 👋',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        GestureDetector(
-                          onTap: () => context.go('/profile'),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'A',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+          uid != null
+            ? StreamBuilder<app_user.User?>(
+                            stream: FirestoreService().getUserStream(uid),
+                            builder: (context, snapshot) {
+                              final fsName = snapshot.data?.name;
+                              final baseName = (fsName != null && fsName.trim().isNotEmpty)
+                                  ? fsName
+                                  : _displayName(context);
+                              final cleaned = _firstAndMiddleFrom(_cleanName(baseName));
+                              final avatarInitial = _avatarInitial(cleaned);
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '$greeting,',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$cleaned 👋',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => context.go('/profile'),
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          avatarInitial,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          )
+                        : Builder(
+                            builder: (_) {
+                              final fallback = _firstAndMiddleFrom(_cleanName(_displayName(context)));
+                              final avatarInitial = _avatarInitial(fallback);
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '$greeting,',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$fallback 👋',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => context.go('/profile'),
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          avatarInitial,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 24),
 
                     // Balance Card
@@ -475,6 +547,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       bottomNavigationBar: const BottomNavigation(currentRoute: '/dashboard'),
     );
+  }
+
+  String _timeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _displayName(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final name = auth.user?.displayName;
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+    final email = auth.user?.email;
+    if (email != null && email.isNotEmpty) {
+      return email.split('@').first;
+    }
+    return 'there';
+  }
+
+  // Normalize name: trim and collapse spaces (no token removal)
+  String _cleanName(String raw) {
+    var s = raw.trim();
+    // Normalize multiple spaces
+    s = s.replaceAll(RegExp(r"\s+"), ' ');
+    return s.trim();
+  }
+
+  // Extract first + middle (second) token; drop last name.
+  String _firstAndMiddleFrom(String name) {
+  final parts = name.split(RegExp(r"\s+"));
+    if (parts.isEmpty || parts.first.isEmpty) return name;
+    if (parts.length >= 2) return '${parts[0]} ${parts[1]}';
+    return parts[0];
+  }
+
+  String _avatarInitial(String displayName) {
+    final fallback = 'U';
+    if (displayName.isEmpty || displayName.toLowerCase() == 'there') return fallback;
+  final trimmed = displayName.trim();
+  if (trimmed.isEmpty) return fallback;
+  final firstRune = trimmed.runes.isEmpty ? null : trimmed.runes.first;
+  if (firstRune == null) return fallback;
+  return String.fromCharCode(firstRune).toUpperCase();
   }
 
   Widget _buildQuickAction({

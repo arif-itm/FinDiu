@@ -11,6 +11,14 @@
 				"$dart-build_runner"
 			],
 			"group": "build"
+		},
+		{
+			"label": "flutter-run-analyze",
+			"type": "shell",
+			"command": "flutter analyze",
+			"args": [],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }
