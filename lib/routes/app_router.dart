@@ -13,13 +13,14 @@ import '../screens/profile_screen.dart';
 import '../screens/profile_edit_screen.dart';
 import '../screens/about_screen.dart';
 import '../screens/transactions_screen.dart';
-import '../providers/auth_provider.dart';
+import '../providers/auth_provider.dart' as app_auth;
 
 final GoRouter router = GoRouter(
   initialLocation: '/splash',
-  refreshListenable: null, // Will be set up in main.dart
+  // Note: GoRouter will evaluate redirect on navigation calls
+  refreshListenable: null,
   redirect: (context, state) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
     final isAuthenticated = authProvider.isAuthenticated;
     final isLoading = authProvider.isLoading;
     

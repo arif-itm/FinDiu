@@ -7,9 +7,34 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   static void _handleLogout(BuildContext context) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.signOut();
-    // The router redirect will handle navigation to login
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Sign out?'),
+          content: const Text('Are you sure you want to sign out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sign Out'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      // Use read to avoid unnecessary rebuilds
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.signOut();
+      if (context.mounted) {
+        context.go('/login');
+      }
+    }
   }
 
   @override

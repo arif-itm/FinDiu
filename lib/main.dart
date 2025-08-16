@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'routes/app_router.dart';
 import 'firebase_options.dart';
@@ -12,6 +14,11 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Persist session across reloads on Web until explicit logout
+  if (kIsWeb) {
+    await firebase_auth.FirebaseAuth.instance
+        .setPersistence(firebase_auth.Persistence.LOCAL);
+  }
   
   runApp(
     ChangeNotifierProvider(

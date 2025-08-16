@@ -117,7 +117,10 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
     
     try {
-      await _authService.signOut();
+  // Immediately reflect logged-out state to avoid redirect loops
+  _user = null;
+  notifyListeners();
+  await _authService.signOut();
   } catch (e) {
       String errorMessage = e.toString();
       if (errorMessage.startsWith('Exception: ')) {
