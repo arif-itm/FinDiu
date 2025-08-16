@@ -53,6 +53,9 @@ dependencies:
   cloud_firestore: ^5.2.1
   google_sign_in: ^6.2.1
   
+  # Local storage
+  shared_preferences: ^2.3.2
+  
   # Google Generative AI (Gemini)
   google_generative_ai: ^0.4.3
 

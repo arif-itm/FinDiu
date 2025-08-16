@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/local_storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final LocalStorageService _localStorage = LocalStorageService();
   User? _user;
   bool _isLoading = false;
   String? _errorMessage;
@@ -17,6 +19,8 @@ class AuthProvider extends ChangeNotifier {
     // Listen to auth state changes
     _authService.authStateChanges.listen((User? user) {
       _user = user;
+  // Persist login state locally
+  _localStorage.setIsUserLogged(user != null);
       notifyListeners();
     });
   }
@@ -28,6 +32,9 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       UserCredential? result = await _authService.signInWithEmailPassword(email, password);
+      if (result != null) {
+        await _localStorage.setIsUserLogged(true);
+      }
       _setLoading(false);
       return result != null;
   } catch (e) {
@@ -56,6 +63,9 @@ class AuthProvider extends ChangeNotifier {
         studentId: studentId,
         university: university,
       );
+      if (result != null) {
+        await _localStorage.setIsUserLogged(true);
+      }
       _setLoading(false);
       return result != null;
     } catch (e) {
@@ -77,6 +87,9 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       UserCredential? result = await _authService.signInWithGoogle();
+      if (result != null) {
+        await _localStorage.setIsUserLogged(true);
+      }
       _setLoading(false);
       return result != null;
     } catch (e) {
@@ -120,6 +133,7 @@ class AuthProvider extends ChangeNotifier {
   // Immediately reflect logged-out state to avoid redirect loops
   _user = null;
   notifyListeners();
+  await _localStorage.setIsUserLogged(false);
   await _authService.signOut();
   } catch (e) {
       String errorMessage = e.toString();

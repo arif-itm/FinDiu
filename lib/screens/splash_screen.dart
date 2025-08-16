@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/local_storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -63,14 +64,19 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
         // Navigate after animations
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        if (authProvider.isAuthenticated) {
-          context.go('/dashboard');
-        } else {
-          context.go('/login');
-        }
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      final local = LocalStorageService();
+      final isLoggedLocal = await local.getIsUserLogged();
+      if (isLoggedLocal) {
+        context.go('/dashboard');
+        return;
+      }
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated) {
+        context.go('/dashboard');
+      } else {
+        context.go('/login');
       }
     });
   }
