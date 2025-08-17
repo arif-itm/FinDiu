@@ -1,0 +1,84 @@
+name: Build and Release Flutter App
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: 'stable'
+        channel: 'stable'
+        
+    - name: Install dependencies
+      run: flutter pub get
+      
+    - name: Run tests
+      run: flutter test
+      
+    - name: Build Web
+      run: |
+        flutter build web --release --web-renderer html
+        cd build/web && zip -r ../../findiu-web.zip .
+        
+    - name: Build APK
+      run: |
+        flutter build apk --release
+        cp build/app/outputs/flutter-apk/app-release.apk findiu-release.apk
+        
+    - name: Get version from tag or input
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.get_version.outputs.TAG_NAME }}
+        name: FinDiu v${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## FinDiu v${{ steps.get_version.outputs.VERSION }}
+          
+          ### What's New
+          - Bug fixes and improvements
+          
+          ### Downloads
+          - **Android APK**: Download the APK file below for Android devices
+          - **Web Build**: Download the web build zip file for hosting
+          
+          ### Installation
+          - **Android**: Download and install the APK file
+          - **Web**: Extract the zip file and serve it from a web server
+        draft: false
+        prerelease: false
+        files: |
+          findiu-release.apk
+          findiu-web.zip
+        fail_on_unmatched_files: true
