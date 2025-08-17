@@ -11,6 +11,11 @@ on:
         required: true
         default: '1.0.0'
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,14 +33,22 @@ jobs:
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: 'stable'
+        flutter-version: '3.24.3'
         channel: 'stable'
+        cache: true
         
     - name: Install dependencies
-      run: flutter pub get
+      run: |
+        flutter doctor -v
+        flutter pub get
       
     - name: Run tests
-      run: flutter test
+      run: |
+        if [ -d "test" ] && [ "$(ls -A test)" ]; then
+          flutter test
+        else
+          echo "No tests found, skipping test execution"
+        fi
       
     - name: Build Web
       run: |
