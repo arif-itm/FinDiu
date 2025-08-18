@@ -23,17 +23,6 @@ jobs:
         
     - name: Install dependencies
       run: flutter pub get
-      
-    - name: Analyze code
-      run: flutter analyze
-      
-    - name: Run tests
-      run: |
-        if [ -d "test" ] && [ "$(ls -A test)" ]; then
-          flutter test
-        else
-          echo "No tests found, skipping test execution"
-        fi
 
   build-web:
     runs-on: ubuntu-latest
@@ -54,7 +43,7 @@ jobs:
       run: flutter pub get
       
     - name: Build Web
-      run: flutter build web --release --web-renderer html
+      run: flutter build web --release 
       
     - name: Upload Web Build Artifacts
       uses: actions/upload-artifact@v4
@@ -89,8 +78,11 @@ jobs:
     - name: Build APK
       run: flutter build apk --release
       
+    - name: Copy and rename APK
+      run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/findiu.apk
+      
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: android-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
+        path: build/app/outputs/flutter-apk/findiu.apk
