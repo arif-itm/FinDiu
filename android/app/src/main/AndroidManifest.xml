@@ -2,8 +2,7 @@
     <application
         android:label="FinDiu"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
-        android:description="Smart Money Management for Students">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
