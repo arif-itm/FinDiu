@@ -3,7 +3,7 @@
         android:label="FinDiu"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:description="Smart Money, Smarter Students - Your AI-Powered Financial Companion for Secure &amp; Simple Money Management">
+        android:description="Smart Money Management for Students">
         <activity
             android:name=".MainActivity"
             android:exported="true"
