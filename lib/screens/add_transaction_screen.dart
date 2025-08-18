@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../utils/input_validators.dart';
+import '../providers/auth_provider.dart';
+import '../providers/transaction_provider.dart';
+import '../models/transaction.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -16,6 +20,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
   final TextEditingController _descriptionController = TextEditingController();
   String _selectedCategory = '';
   bool _showSuccess = false;
+  bool _isLoading = false;
 
   final List<Map<String, dynamic>> _expenseCategories = [
     {'name': 'Tuition', 'color': Colors.blue.shade100, 'icon': Icons.school, 'iconColor': Colors.blue},
@@ -60,19 +65,80 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
   List<Map<String, dynamic>> get _currentCategories => 
       _isExpenseTab ? _expenseCategories : _incomeCategories;
 
-  void _addTransaction() {
+  void _addTransaction() async {
     if (_amountController.text.isNotEmpty &&
         _descriptionController.text.isNotEmpty &&
-        _selectedCategory.isNotEmpty) {
+        _selectedCategory.isNotEmpty &&
+        InputValidators.isValidAmount(_amountController.text)) {
+      
       setState(() {
-        _showSuccess = true;
+        _isLoading = true;
       });
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          context.go('/dashboard');
+      
+      final auth = context.read<AuthProvider>();
+      final transactionProvider = context.read<TransactionProvider>();
+      
+      if (auth.user?.uid != null) {
+        final transaction = Transaction(
+          id: '', // Firestore will generate the ID
+          amount: double.parse(_amountController.text),
+          description: _descriptionController.text,
+          category: _selectedCategory,
+          date: DateTime.now(),
+          type: _isExpenseTab ? TransactionType.expense : TransactionType.income,
+          icon: _getIconForCategory(_selectedCategory),
+        );
+        
+        try {
+          await transactionProvider.addTransaction(transaction, auth.user!.uid);
+          
+          setState(() {
+            _showSuccess = true;
+            _isLoading = false;
+          });
+          
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              context.go('/dashboard');
+            }
+          });
+        } catch (e) {
+          setState(() {
+            _isLoading = false;
+          });
+          
+          // Show error message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to add transaction: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
-      });
+      }
     }
+  }
+  
+  String _getIconForCategory(String category) {
+    // Map category names to icon identifiers
+    final categoryIcons = {
+      'Tuition': 'school',
+      'Campus Food': 'restaurant',
+      'One Card': 'credit_card',
+      'Coffee': 'local_cafe',
+      'Exam Fees': 'assignment',
+      'Books & Supplies': 'menu_book',
+      'Transport': 'directions_bus',
+      'Salary': 'attach_money',
+      'Scholarship': 'school',
+      'Allowance': 'card_giftcard',
+      'Part-time Job': 'work',
+      'Gifts': 'card_giftcard',
+    };
+    
+    return categoryIcons[category] ?? 'account_balance_wallet';
   }
 
   @override
@@ -607,7 +673,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
                 onPressed: (_amountController.text.isNotEmpty &&
                         _descriptionController.text.isNotEmpty &&
                         _selectedCategory.isNotEmpty &&
-                        InputValidators.isValidAmount(_amountController.text))
+                        InputValidators.isValidAmount(_amountController.text) &&
+                        !_isLoading)
                     ? _addTransaction
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -629,24 +696,33 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
                     Colors.white.withOpacity(0.1),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isExpense ? Icons.remove_circle_outline : Icons.add_circle_outline,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      isExpense ? 'Add Campus Expense' : 'Add Income',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
+                child: _isLoading 
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
                       ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isExpense ? Icons.remove_circle_outline : Icons.add_circle_outline,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isExpense ? 'Add Campus Expense' : 'Add Income',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               ),
             ),
           ),

@@ -3,10 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../widgets/bottom_navigation.dart';
-import '../data/mock_data.dart';
 import '../providers/auth_provider.dart';
+import '../providers/transaction_provider.dart';
 import '../services/firestore_service.dart';
 import '../models/user.dart' as app_user;
+import '../models/transaction.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,15 +18,33 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _showBalance = true;
-  final double _balance = 12750;
-  final double _monthlyBudget = 8000;
-  final double _spent = 4500;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize transactions when the dashboard loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      final transactionProvider = context.read<TransactionProvider>();
+      if (auth.user?.uid != null) {
+        transactionProvider.initializeTransactions(auth.user!.uid);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-  final greeting = _timeGreeting();
-  final auth = context.watch<AuthProvider>();
-  final uid = auth.user?.uid;
+    final greeting = _timeGreeting();
+    final auth = context.watch<AuthProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
+    final uid = auth.user?.uid;
+    
+    // Use real data from TransactionProvider
+    final balance = transactionProvider.totalBalance;
+    final monthlyIncome = transactionProvider.monthlyIncome;
+    final monthlyExpenses = transactionProvider.monthlyExpenses;
+    final monthlyBudget = 8000.0; // This could be user-configurable
+    final recentTransactions = transactionProvider.recentTransactions;
     return Scaffold(
       body: Column(
         children: [
@@ -199,7 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            _showBalance ? '৳${_balance.toStringAsFixed(0)}' : '৳••••••',
+                            _showBalance ? '৳${balance.toStringAsFixed(0)}' : '৳••••••',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 28,
@@ -216,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     color: Colors.white.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: const Column(
+                                  child: Column(
                                     children: [
                                       Icon(
                                         LucideIcons.arrowUpRight,
@@ -232,7 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '৳2,500',
+                                        '৳${monthlyIncome.toStringAsFixed(0)}',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
@@ -251,7 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     color: Colors.white.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: const Column(
+                                  child: Column(
                                     children: [
                                       Icon(
                                         LucideIcons.arrowDownLeft,
@@ -267,7 +286,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '৳1,820',
+                                        '৳${monthlyExpenses.toStringAsFixed(0)}',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
@@ -397,14 +416,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '৳${_spent.toStringAsFixed(0)} spent',
+                              '৳${monthlyExpenses.toStringAsFixed(0)} spent',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
-                              'of ৳${_monthlyBudget.toStringAsFixed(0)}',
+                              'of ৳${monthlyBudget.toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -414,7 +433,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
-                          value: _spent / _monthlyBudget,
+                          value: monthlyBudget > 0 ? monthlyExpenses / monthlyBudget : 0,
                           backgroundColor: Colors.grey[200],
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF6366F1),
@@ -422,7 +441,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '৳${(_monthlyBudget - _spent).toStringAsFixed(0)} remaining',
+                          '৳${(monthlyBudget - monthlyExpenses).toStringAsFixed(0)} remaining',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -475,30 +494,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        ...MockData.transactions.take(3).map((transaction) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: transaction.type.name == 'income'
-                                        ? Colors.green.withOpacity(0.1)
-                                        : Colors.red.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    transaction.type.name == 'income'
-                                        ? LucideIcons.arrowUpRight
-                                        : LucideIcons.arrowDownLeft,
-                                    color: transaction.type.name == 'income'
-                                        ? Colors.green
-                                        : Colors.red,
-                                    size: 20,
-                                  ),
+                        // Show loading state or empty state
+                        if (transactionProvider.isLoading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (recentTransactions.isEmpty)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Text(
+                                'No transactions yet. Add your first transaction!',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
                                 ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                        else
+                          ...recentTransactions.take(3).map((transaction) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: transaction.type == TransactionType.income
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      transaction.type == TransactionType.income
+                                          ? LucideIcons.arrowUpRight
+                                          : LucideIcons.arrowDownLeft,
+                                      color: transaction.type == TransactionType.income
+                                          ? Colors.green
+                                          : Colors.red,
+                                      size: 20,
+                                    ),
+                                  ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -522,11 +564,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '${transaction.type.name == 'expense' ? '-' : '+'}৳${transaction.amount.toStringAsFixed(0)}',
+                                  '${transaction.type == TransactionType.expense ? '-' : '+'}৳${transaction.amount.toStringAsFixed(0)}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
-                                    color: transaction.type.name == 'income'
+                                    color: transaction.type == TransactionType.income
                                         ? Colors.green
                                         : Colors.red,
                                   ),
