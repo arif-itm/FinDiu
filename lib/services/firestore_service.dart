@@ -132,7 +132,7 @@ class FirestoreService {
         .collection(usersCollection)
         .doc(userId)
         .collection(savingsGoalsCollection)
-        .orderBy('targetDate')
+        .orderBy('deadline')
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => SavingsGoal.fromJson({...doc.data(), 'id': doc.id}))

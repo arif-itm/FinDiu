@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../widgets/bottom_navigation.dart';
-import '../data/mock_data.dart';
 import '../models/transaction.dart';
+import '../providers/transaction_provider.dart';
+import '../providers/auth_provider.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -17,13 +19,33 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   String _selectedFilter = 'all';
   String _selectedMonth = 'current';
   
-  List<Transaction> get transactions => MockData.transactions;
+  @override
+  void initState() {
+    super.initState();
+    // Initialize transactions when the screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+      
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        transactionProvider.initializeTransactions(authProvider.user!.uid);
+      }
+    });
+  }
+  
+  List<Transaction> _getTransactions(BuildContext context) {
+    final transactionProvider = Provider.of<TransactionProvider>(context);
+    return transactionProvider.transactions;
+  }
 
-  List<Map<String, dynamic>> get filters => [
-    {'id': 'all', 'label': 'All', 'count': transactions.length},
-    {'id': 'income', 'label': 'Income', 'count': transactions.where((t) => t.amount > 0).length},
-    {'id': 'expense', 'label': 'Expenses', 'count': transactions.where((t) => t.amount < 0).length},
-  ];
+  List<Map<String, dynamic>> getFilters(BuildContext context) {
+    final transactions = _getTransactions(context);
+    return [
+      {'id': 'all', 'label': 'All', 'count': transactions.length},
+      {'id': 'income', 'label': 'Income', 'count': transactions.where((t) => t.type == TransactionType.income).length},
+      {'id': 'expense', 'label': 'Expenses', 'count': transactions.where((t) => t.type == TransactionType.expense).length},
+    ];
+  }
 
   final List<Map<String, String>> months = [
     {'id': 'current', 'label': 'This Month'},
@@ -31,31 +53,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     {'id': 'all', 'label': 'All Time'},
   ];
 
-  List<Transaction> get filteredTransactions {
+  List<Transaction> getFilteredTransactions(BuildContext context) {
+    final transactions = _getTransactions(context);
     return transactions.where((transaction) {
       final matchesSearch = transaction.description.toLowerCase().contains(_searchController.text.toLowerCase()) ||
                            transaction.category.toLowerCase().contains(_searchController.text.toLowerCase());
       final matchesFilter = _selectedFilter == 'all' || 
-                           (_selectedFilter == 'income' && transaction.amount > 0) ||
-                           (_selectedFilter == 'expense' && transaction.amount < 0);
+                           (_selectedFilter == 'income' && transaction.type == TransactionType.income) ||
+                           (_selectedFilter == 'expense' && transaction.type == TransactionType.expense);
       return matchesSearch && matchesFilter;
     }).toList();
   }
 
-  double get totalIncome {
+  double getTotalIncome(BuildContext context) {
+    final filteredTransactions = getFilteredTransactions(context);
     return filteredTransactions
-        .where((t) => t.amount > 0)
+        .where((t) => t.type == TransactionType.income)
         .fold(0.0, (sum, t) => sum + t.amount);
   }
 
-  double get totalExpenses {
+  double getTotalExpenses(BuildContext context) {
+    final filteredTransactions = getFilteredTransactions(context);
     return filteredTransactions
-        .where((t) => t.amount < 0)
-        .fold(0.0, (sum, t) => sum + t.amount.abs());
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
   }
 
   IconData _getTransactionIcon(Transaction transaction) {
-    if (transaction.amount > 0) {
+    if (transaction.type == TransactionType.income) {
       return LucideIcons.trendingUp;
     } else {
       return LucideIcons.trendingDown;
@@ -83,7 +108,57 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer2<TransactionProvider, AuthProvider>(
+      builder: (context, transactionProvider, authProvider, child) {
+        final filteredTransactions = getFilteredTransactions(context);
+        final filters = getFilters(context);
+        final totalIncome = getTotalIncome(context);
+        final totalExpenses = getTotalExpenses(context);
+        final isLoading = transactionProvider.isLoading;
+        final error = transactionProvider.error;
+        
+        if (!authProvider.isAuthenticated) {
+          return const Scaffold(
+            body: Center(
+              child: Text('Please log in to view transactions'),
+            ),
+            bottomNavigationBar: BottomNavigation(currentRoute: '/transactions'),
+          );
+        }
+        
+        if (isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+            bottomNavigationBar: BottomNavigation(currentRoute: '/transactions'),
+          );
+        }
+        
+        if (error != null) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: $error'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (authProvider.user != null) {
+                        transactionProvider.initializeTransactions(authProvider.user!.uid);
+                      }
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+            bottomNavigationBar: const BottomNavigation(currentRoute: '/transactions'),
+          );
+        }
+        
+        return Scaffold(
       body: Column(
         children: [
           // Header
@@ -499,14 +574,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: transaction.amount > 0
+                                        color: transaction.type == TransactionType.income
                                             ? const Color(0xFF10B981).withOpacity(0.1)
                                             : Colors.red.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       child: Icon(
                                         _getTransactionIcon(transaction),
-                                        color: transaction.amount > 0
+                                        color: transaction.type == TransactionType.income
                                             ? const Color(0xFF10B981)
                                             : Colors.red,
                                         size: 24,
@@ -530,11 +605,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                                 ),
                                               ),
                                               Text(
-                                                '${transaction.amount > 0 ? '+' : '-'}৳${transaction.amount.abs().toInt().toString()}',
+                                                '${transaction.type == TransactionType.income ? '+' : '-'}৳${transaction.amount.toInt().toString()}',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 18,
-                                                  color: transaction.amount > 0
+                                                  color: transaction.type == TransactionType.income
                                                       ? const Color(0xFF10B981)
                                                       : Colors.red,
                                                 ),
@@ -735,6 +810,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         ],
       ),
       bottomNavigationBar: const BottomNavigation(currentRoute: '/transactions'),
+    );
+      },
     );
   }
 

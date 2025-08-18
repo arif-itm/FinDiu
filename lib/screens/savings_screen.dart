@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../widgets/bottom_navigation.dart';
 import '../models/savings_goal.dart';
 import '../utils/input_validators.dart';
+import '../providers/savings_goal_provider.dart';
+import '../providers/auth_provider.dart';
 
 class SavingsScreen extends StatefulWidget {
   const SavingsScreen({super.key});
@@ -22,44 +25,19 @@ class _SavingsScreenState extends State<SavingsScreen> {
   final TextEditingController _deadlineController = TextEditingController();
   String _selectedCategory = 'Education';
 
-  List<SavingsGoal> savingsGoals = [
-    SavingsGoal(
-      id: '1',
-      title: 'Next Semester Tuition',
-      targetAmount: 25000.0,
-      currentAmount: 18500.0,
-      deadline: DateTime(2024, 6, 30),
-      category: 'Education',
-      color: Colors.blue,
-    ),
-    SavingsGoal(
-      id: '2',
-      title: 'Laptop for Studies',
-      targetAmount: 45000.0,
-      currentAmount: 28000.0,
-      deadline: DateTime(2024, 8, 15),
-      category: 'Technology',
-      color: Colors.purple,
-    ),
-    SavingsGoal(
-      id: '3',
-      title: 'Study Abroad Program',
-      targetAmount: 150000.0,
-      currentAmount: 45000.0,
-      deadline: DateTime(2024, 12, 31),
-      category: 'Education',
-      color: Colors.green,
-    ),
-    SavingsGoal(
-      id: '4',
-      title: 'Campus Emergency Fund',
-      targetAmount: 10000.0,
-      currentAmount: 6500.0,
-      deadline: DateTime(2024, 5, 30),
-      category: 'Emergency',
-      color: Colors.orange,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Initialize savings goals when the screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final savingsProvider = Provider.of<SavingsGoalProvider>(context, listen: false);
+      
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        savingsProvider.initializeSavingsGoals(authProvider.user!.uid);
+      }
+    });
+  }
 
   final List<Map<String, dynamic>> categories = [
     {'name': 'Education', 'color': Colors.blue},
@@ -70,47 +48,50 @@ class _SavingsScreenState extends State<SavingsScreen> {
     {'name': 'Other', 'color': Colors.grey},
   ];
 
-  int get totalSaved {
-    return savingsGoals.fold(0, (sum, goal) => sum + goal.currentAmount.toInt());
-  }
-
-  void _handleCreateGoal() {
+  Future<void> _handleCreateGoal() async {
     if (_titleController.text.isNotEmpty && 
         _targetAmountController.text.isNotEmpty) {
-      final newGoal = SavingsGoal(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _titleController.text,
-        targetAmount: double.parse(_targetAmountController.text),
-        currentAmount: 0.0,
-        deadline: DateTime.now().add(const Duration(days: 90)),
-        category: _selectedCategory,
-        color: categories.firstWhere((cat) => cat['name'] == _selectedCategory)['color'],
-      );
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final savingsProvider = Provider.of<SavingsGoalProvider>(context, listen: false);
+      
+      if (authProvider.user != null) {
+        final newGoal = SavingsGoal(
+          id: '', // Firestore will generate the ID
+          title: _titleController.text,
+          targetAmount: double.parse(_targetAmountController.text),
+          currentAmount: 0.0,
+          deadline: DateTime.now().add(const Duration(days: 90)),
+          category: _selectedCategory,
+          color: categories.firstWhere((cat) => cat['name'] == _selectedCategory)['color'],
+        );
 
-      setState(() {
-        savingsGoals.add(newGoal);
-        _showCreateModal = false;
-      });
+        await savingsProvider.addSavingsGoal(newGoal, authProvider.user!.uid);
 
-      _titleController.clear();
-      _targetAmountController.clear();
+        setState(() {
+          _showCreateModal = false;
+        });
+
+        _titleController.clear();
+        _targetAmountController.clear();
+      }
     }
   }
 
-  void _handleAddMoney() {
+  Future<void> _handleAddMoney() async {
     if (_addAmountController.text.isNotEmpty && _selectedGoalId.isNotEmpty) {
       final amount = double.parse(_addAmountController.text);
-      setState(() {
-        final goalIndex = savingsGoals.indexWhere((goal) => goal.id == _selectedGoalId);
-        if (goalIndex != -1) {
-          savingsGoals[goalIndex] = savingsGoals[goalIndex].copyWith(
-            currentAmount: savingsGoals[goalIndex].currentAmount + amount,
-          );
-        }
-        _showAddMoneyModal = false;
-        _addAmountController.clear();
-        _selectedGoalId = '';
-      });
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final savingsProvider = Provider.of<SavingsGoalProvider>(context, listen: false);
+      
+      if (authProvider.user != null) {
+        await savingsProvider.addMoneyToGoal(_selectedGoalId, amount, authProvider.user!.uid);
+        
+        setState(() {
+          _showAddMoneyModal = false;
+          _addAmountController.clear();
+          _selectedGoalId = '';
+        });
+      }
     }
   }
 
@@ -120,10 +101,58 @@ class _SavingsScreenState extends State<SavingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Column(
+    return Consumer2<SavingsGoalProvider, AuthProvider>(
+      builder: (context, savingsProvider, authProvider, child) {
+        final savingsGoals = savingsProvider.savingsGoals;
+        final totalSaved = savingsProvider.totalSaved.toInt();
+        final isLoading = savingsProvider.isLoading;
+        final error = savingsProvider.error;
+        
+        if (!authProvider.isAuthenticated) {
+          return const Scaffold(
+            body: Center(
+              child: Text('Please log in to view savings goals'),
+            ),
+            bottomNavigationBar: BottomNavigation(currentRoute: '/savings'),
+          );
+        }
+        
+        if (isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+            bottomNavigationBar: BottomNavigation(currentRoute: '/savings'),
+          );
+        }
+        
+        if (error != null) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: $error'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (authProvider.user != null) {
+                        savingsProvider.initializeSavingsGoals(authProvider.user!.uid);
+                      }
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+            bottomNavigationBar: const BottomNavigation(currentRoute: '/savings'),
+          );
+        }
+        
+        return Scaffold(
+          body: Stack(
+            children: [
+              Column(
             children: [
               // Header
               Container(
@@ -289,7 +318,49 @@ class _SavingsScreenState extends State<SavingsScreen> {
                         ),
                         const SizedBox(height: 24),
                         // Savings Goals
-                        ...savingsGoals.map((goal) {
+                        if (savingsGoals.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(48),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(
+                                  LucideIcons.target,
+                                  size: 64,
+                                  color: Color(0xFF9CA3AF),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No savings goals yet',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF111827),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Start by creating your first savings goal',
+                                  style: TextStyle(
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...savingsGoals.map((goal) {
                           final progress = goal.targetAmount > 0 
                             ? (goal.currentAmount / goal.targetAmount) * 100 
                             : 0.0;
@@ -703,6 +774,8 @@ class _SavingsScreenState extends State<SavingsScreen> {
         ],
       ),
       bottomNavigationBar: const BottomNavigation(currentRoute: '/savings'),
+    );
+      },
     );
   }
 
