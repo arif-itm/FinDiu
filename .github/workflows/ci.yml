@@ -1,10 +1,15 @@
-name: CI - Build and Test
+name: CI - Build and Release
 
 on:
   push:
     branches: [ main, flutter, develop ]
   pull_request:
     branches: [ main, flutter ]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   test:
@@ -86,3 +91,66 @@ jobs:
       with:
         name: android-apk
         path: build/app/outputs/flutter-apk/findiu.apk
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-web, build-android]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/flutter')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download Web Build
+      uses: actions/download-artifact@v4
+      with:
+        name: web-build
+        path: web-build/
+        
+    - name: Download Android APK
+      uses: actions/download-artifact@v4
+      with:
+        name: android-apk
+        path: android-build/
+        
+    - name: Create Web ZIP
+      run: |
+        cd web-build
+        zip -r ../findiu-web-build.zip .
+        cd ..
+        
+    - name: Generate Release Info
+      id: release_info
+      run: |
+        TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+        COMMIT_SHORT=$(git rev-parse --short HEAD)
+        TAG_NAME="build-${TIMESTAMP}-${COMMIT_SHORT}"
+        RELEASE_NAME="FinDiu Build ${TIMESTAMP}"
+        echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+        echo "RELEASE_NAME=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.release_info.outputs.TAG_NAME }}
+        name: ${{ steps.release_info.outputs.RELEASE_NAME }}
+        body: |
+          ## FinDiu Development Build
+          
+          **Branch**: ${{ github.ref_name }}  
+          **Commit**: ${{ github.sha }}  
+          **Build Time**: $(date)
+          
+          ### Downloads
+          - **Android APK**: Ready to install on Android devices
+          - **Web Build**: Extract ZIP and deploy to web server
+          
+          ### Installation
+          - **Android**: Download `findiu.apk` and install
+          - **Web**: Download `findiu-web-build.zip`, extract and serve
+        draft: false
+        prerelease: true
+        files: |
+          android-build/findiu.apk
+          findiu-web-build.zip
+        fail_on_unmatched_files: true
