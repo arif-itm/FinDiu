@@ -33,8 +33,8 @@ android {
         versionName = flutter.versionName
         
         // App metadata
-        resValue "string", "app_name", "FinDiu"
-        resValue "string", "app_description", "Smart Money, Smarter Students - Your AI-Powered Financial Companion"
+        resValue("string", "app_name", "FinDiu")
+        resValue("string", "app_description", "Smart Money, Smarter Students - Your AI-Powered Financial Companion")
     }
 
     buildTypes {
