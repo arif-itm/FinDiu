@@ -1,28 +1,191 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../widgets/bottom_navigation.dart';
+import '../providers/transaction_provider.dart';
+import '../providers/auth_provider.dart';
+import '../models/transaction.dart';
 
-class AnalyticsScreen extends StatelessWidget {
+class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final spendingData = [
-      {'category': 'Food', 'amount': 2800, 'percentage': 35, 'color': Colors.orange},
-      {'category': 'Transport', 'amount': 1500, 'percentage': 19, 'color': Colors.blue},
-      {'category': 'Education', 'amount': 1200, 'percentage': 15, 'color': Colors.purple},
-      {'category': 'Entertainment', 'amount': 1000, 'percentage': 12, 'color': Colors.pink},
-      {'category': 'Shopping', 'amount': 800, 'percentage': 10, 'color': Colors.green},
-      {'category': 'Others', 'amount': 700, 'percentage': 9, 'color': Colors.grey},
-    ];
+  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+}
 
-    final monthlyTrend = [
-      {'month': 'Oct', 'amount': 6800},
-      {'month': 'Nov', 'amount': 7200},
-      {'month': 'Dec', 'amount': 6900},
-      {'month': 'Jan', 'amount': 8000},
-    ];
+class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize transactions when the screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+      
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        transactionProvider.initializeTransactions(authProvider.user!.uid);
+      }
+    });
+  }
+
+  List<Map<String, dynamic>> _getSpendingData(Map<String, double> categoryTotals, double totalExpenses) {
+    final categoryColors = {
+      'Campus Food': Colors.orange,
+      'Food': Colors.orange,
+      'Transport': Colors.blue,
+      'Education': Colors.purple,
+      'Tuition': Colors.purple,
+      'Entertainment': Colors.pink,
+      'Shopping': Colors.green,
+      'Books': Colors.teal,
+      'Utilities': Colors.red,
+      'Health': Colors.pink.shade300,
+      'Others': Colors.grey,
+      'Other': Colors.grey,
+    };
+
+    return categoryTotals.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) {
+          final percentage = totalExpenses > 0 ? (entry.value / totalExpenses * 100).round() : 0;
+          return {
+            'category': entry.key,
+            'amount': entry.value.round(),
+            'percentage': percentage,
+            'color': categoryColors[entry.key] ?? Colors.grey,
+          };
+        })
+        .toList()
+      ..sort((a, b) => (b['amount'] as int).compareTo(a['amount'] as int));
+  }
+
+  List<Map<String, dynamic>> _getMonthlyTrend(List<Transaction> transactions) {
+    final now = DateTime.now();
+    final monthlyData = <String, double>{};
+    
+    // Get last 4 months including current
+    for (int i = 3; i >= 0; i--) {
+      final monthDate = DateTime(now.year, now.month - i, 1);
+      final monthName = _getMonthName(monthDate.month);
+      
+      final monthStart = DateTime(monthDate.year, monthDate.month, 1);
+      final monthEnd = DateTime(monthDate.year, monthDate.month + 1, 0);
+      
+      final monthExpenses = transactions
+          .where((t) => 
+              t.type == TransactionType.expense &&
+              t.date.isAfter(monthStart.subtract(const Duration(days: 1))) &&
+              t.date.isBefore(monthEnd.add(const Duration(days: 1))))
+          .fold(0.0, (sum, t) => sum + t.amount);
+      
+      monthlyData['$monthName'] = monthExpenses;
+    }
+    
+    return monthlyData.entries
+        .map((entry) => {
+              'month': entry.key,
+              'amount': entry.value.round(),
+            })
+        .toList();
+  }
+
+  String _getMonthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
+  }
+
+  List<Map<String, dynamic>> _generateInsights(
+    Map<String, double> categoryTotals, 
+    double monthlyChange, 
+    double totalExpenses,
+    List<Transaction> transactions
+  ) {
+    final insights = <Map<String, dynamic>>[];
+    
+    // Check if there's spending data
+    if (categoryTotals.isEmpty || totalExpenses == 0) {
+      insights.add({
+        'title': 'Start tracking your expenses',
+        'description': 'Add some transactions to see personalized insights about your spending patterns.',
+        'color': Colors.blue,
+        'icon': LucideIcons.info,
+      });
+      return insights;
+    }
+
+    // Top spending category insight
+    if (categoryTotals.isNotEmpty) {
+      final topCategory = categoryTotals.entries
+          .reduce((a, b) => a.value > b.value ? a : b);
+      
+      final percentage = (topCategory.value / totalExpenses * 100).round();
+      
+      insights.add({
+        'title': '${topCategory.key} is your top expense',
+        'description': 'You spent ৳${topCategory.value.round()} (${percentage}%) on ${topCategory.key} this month.',
+        'color': percentage > 40 ? Colors.orange : Colors.blue,
+        'icon': percentage > 40 ? LucideIcons.alertTriangle : LucideIcons.pieChart,
+      });
+    }
+
+    // Monthly trend insight
+    if (monthlyChange != 0) {
+      if (monthlyChange > 10) {
+        insights.add({
+          'title': 'Spending increased significantly',
+          'description': 'Your expenses increased by ${monthlyChange}% this month. Consider reviewing your budget.',
+          'color': Colors.red,
+          'icon': LucideIcons.trendingUp,
+        });
+      } else if (monthlyChange < -10) {
+        insights.add({
+          'title': 'Great job saving money!',
+          'description': 'You reduced your expenses by ${monthlyChange.abs()}% this month. Keep it up!',
+          'color': Colors.green,
+          'icon': LucideIcons.trendingDown,
+        });
+      }
+    }
+
+    // If no significant insights, add a general one
+    if (insights.length == 1) {
+      final avgDailySpending = (totalExpenses / DateTime.now().day).round();
+      insights.add({
+        'title': 'Steady spending pattern',
+        'description': 'You\'re spending an average of ৳${avgDailySpending} per day this month.',
+        'color': Colors.green,
+        'icon': LucideIcons.checkCircle,
+      });
+    }
+
+    return insights.take(2).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<TransactionProvider>(
+      builder: (context, transactionProvider, child) {
+        final categoryTotals = transactionProvider.getExpenseCategories();
+        final totalExpenses = transactionProvider.monthlyExpenses;
+        final dailyAverage = totalExpenses > 0 ? (totalExpenses / DateTime.now().day).round() : 0;
+        final spendingData = _getSpendingData(categoryTotals, totalExpenses);
+        final monthlyTrend = _getMonthlyTrend(transactionProvider.transactions);
+        
+        // Calculate previous month expenses for comparison
+        final now = DateTime.now();
+        final lastMonthStart = DateTime(now.year, now.month - 1, 1);
+        final lastMonthEnd = DateTime(now.year, now.month, 0);
+        final lastMonthExpenses = transactionProvider.getTransactionsByDateRange(lastMonthStart, lastMonthEnd)
+            .where((t) => t.type == TransactionType.expense)
+            .fold(0.0, (sum, t) => sum + t.amount);
+        
+        final monthlyChange = lastMonthExpenses > 0 
+            ? ((totalExpenses - lastMonthExpenses) / lastMonthExpenses * 100).round()
+            : 0;
+            
+        final insights = _generateInsights(categoryTotals, monthlyChange.toDouble(), totalExpenses, transactionProvider.transactions);
 
     return Scaffold(
       body: Column(
@@ -82,10 +245,10 @@ class AnalyticsScreen extends StatelessWidget {
                               color: Colors.white.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Column(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                const Row(
                                   children: [
                                     Icon(
                                       LucideIcons.trendingUp,
@@ -102,18 +265,20 @@ class AnalyticsScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
-                                  '৳8,000',
-                                  style: TextStyle(
+                                  '৳${totalExpenses.round().toString()}',
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
-                                  '+12% from last month',
-                                  style: TextStyle(
+                                  monthlyChange >= 0 
+                                      ? '+${monthlyChange}% from last month' 
+                                      : '${monthlyChange}% from last month',
+                                  style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
                                   ),
@@ -130,13 +295,13 @@ class AnalyticsScreen extends StatelessWidget {
                               color: Colors.white.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Column(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                const Row(
                                   children: [
                                     Icon(
-                                      LucideIcons.trendingDown,
+                                      LucideIcons.calendar,
                                       color: Colors.white,
                                       size: 20,
                                     ),
@@ -150,17 +315,17 @@ class AnalyticsScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
-                                  '৳258',
-                                  style: TextStyle(
+                                  '৳${dailyAverage}',
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  '-5% from last month',
+                                const Text(
+                                  'Based on this month',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
@@ -220,7 +385,39 @@ class AnalyticsScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          ...spendingData.map((item) => Column(
+                          if (spendingData.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    LucideIcons.pieChart,
+                                    size: 48,
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'No spending data yet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Start adding your expenses to see spending breakdown by category.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            ...spendingData.map((item) => Column(
                             children: [
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -328,7 +525,39 @@ class AnalyticsScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          ...monthlyTrend.asMap().entries.map((entry) {
+                          if (monthlyTrend.isEmpty || monthlyTrend.every((item) => item['amount'] == 0))
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    LucideIcons.barChart3,
+                                    size: 48,
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'No trend data yet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Add transactions over time to see your monthly spending trends.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF9CA3AF),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            ...monthlyTrend.asMap().entries.map((entry) {
                             final index = entry.key;
                             final item = entry.value;
                             final maxAmount = monthlyTrend.map((d) => d['amount'] as int).reduce((a, b) => a > b ? a : b);
@@ -423,101 +652,59 @@ class AnalyticsScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Icon(
-                                    LucideIcons.trendingUp,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
+                          ...insights.map((insight) => Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: (insight['color'] as Color).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Food spending increased',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF111827),
-                                        ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: insight['color'] as Color,
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'You spent 15% more on food this month. Consider meal planning to reduce costs.',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF6B7280),
-                                        ),
+                                      child: Icon(
+                                        insight['icon'] as IconData,
+                                        color: Colors.white,
+                                        size: 16,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            insight['title'] as String,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF111827),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            insight['description'] as String,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Icon(
-                                    LucideIcons.trendingDown,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Great job on transport!',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF111827),
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'You saved ৳300 on transport this month by using your student bus pass.',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF6B7280),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                              ),
+                              if (insights.indexOf(insight) < insights.length - 1)
+                                const SizedBox(height: 16),
+                            ],
+                          )),
                         ],
                       ),
                     ),
@@ -529,6 +716,8 @@ class AnalyticsScreen extends StatelessWidget {
         ],
       ),
       bottomNavigationBar: const BottomNavigation(currentRoute: '/analytics'),
+    );
+      },
     );
   }
 }
